@@ -16,7 +16,10 @@ wss.on("connection", (ws) => {
   ws.on("message", async (message) => {
     const data = JSON.parse(message);
     console.log("Received:", data);
-
+// إرسال Mock Data كرد تجريبي للبوت
+    ws.send(JSON.stringify({ reply: "هذا رد تجريبي من السيرفر" }));
+  });
+});
     // إعادة التوجيه إلى n8n webhook
     const res = await fetch("https://marouass.app.n8n.cloud/webhook-test/19cfac5f-1486-49da-9073-fd2cfdbf4c23", {
       method: "POST",
