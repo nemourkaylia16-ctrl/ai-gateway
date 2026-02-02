@@ -1,4 +1,4 @@
-const socket = new WebSocket("https://ai-gateway-erqa.onrender.com");
+const socket = new WebSocket("https://ai-gateway-2.onrender.com");
 
 socket.onmessage = (e) => {
   const data = JSON.parse(e.data);
