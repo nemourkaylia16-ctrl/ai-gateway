@@ -1,44 +1,77 @@
-import express from "express";
-import fetch from "node-fetch";
-import WebSocket, { WebSocketServer } from "ws"; // <--- تصحيح هنا
+// server.js
+const express = require("express");
+const fetch = require("node-fetch");
+const WebSocket = require("ws");
 
 const app = express();
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;      // HTTP endpoint
+const WS_PORT = process.env.WS_PORT || 8080; // WebSocket
 
-// WebSocket Server
-const wss = new WebSocketServer({ port: 8080 }); // منفصل عن Express
+// === WebSocket Gateway ===
+const wss = new WebSocket.Server({ port: WS_PORT });
 
 wss.on("connection", (ws) => {
-  ws.on("message", async (message) => {
-    const data = JSON.parse(message);
-    console.log("Received:", data);
+  console.log("✅ Client connected to WebSocket");
 
-    // إعادة التوجيه إلى n8n webhook
-    const res = await fetch("https://marouass.app.n8n.cloud/webhook/19cfac5f-1486-49da-9073-fd2cfdbf4c23", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+  ws.on("message", async (msg) => {
+    try {
+      const data = JSON.parse(msg);
 
-    const reply = await res.json();
-    ws.send(JSON.stringify(reply));
+      // إرسال مؤشر "typing"
+      ws.send(JSON.stringify({ type: "typing" }));
+
+      // إعادة توجيه الرسالة إلى n8n webhook
+      const res = await fetch("https://YOUR.app.n8n.cloud/webhook/ai-worker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: data.message,
+          client_id: data.client_id,
+          language: data.language,
+          domain: data.domain,
+        }),
+      });
+
+      const ai = await res.json();
+
+      // إرسال الرد للبوت
+      ws.send(JSON.stringify({
+        type: "message",
+        text: ai.reply || "لا يوجد رد"
+      }));
+    } catch (err) {
+      console.error(err);
+      ws.send(JSON.stringify({
+        type: "error",
+        text: "❌ حصل خطأ، حاول مرة أخرى"
+      }));
+    }
+  });
+
+  ws.on("close", () => {
+    console.log("Client disconnected");
   });
 });
 
-// Express HTTP endpoint
+// === Express HTTP endpoint (اختياري، للـ fallback أو اختبار) ===
 app.post("/chat", async (req, res) => {
-  const response = await fetch("https://marouass.app.n8n.cloud/webhook/19cfac5f-1486-49da-9073-fd2cfdbf4c23", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req.body),
-  });
+  try {
+    const response = await fetch("https://YOUR.app.n8n.cloud/webhook/ai-worker", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body),
+    });
 
-  const data = await response.json();
-  res.json(data);
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Express running on port ${PORT}`);
 });
+console.log(`WebSocket running on ws://localhost:${WS_PORT}`);
