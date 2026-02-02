@@ -34,6 +34,9 @@ app.post("/chat", async (req, res) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req.body),
   });
+  app.get("/", (req, res) => {
+  res.send("Server is running ✅");
+});
 
   const data = await response.json();
   res.json(data);
