@@ -1,46 +1,44 @@
-import WebSocket from "ws";
+import express from "express";
 import fetch from "node-fetch";
+import WebSocket, { WebSocketServer } from "ws"; // <--- تصحيح هنا
+
+const app = express();
+app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-const wss = new WebSocket.Server({ port: PORT });
+// WebSocket Server
+const wss = new WebSocketServer({ port: 8080 }); // منفصل عن Express
 
 wss.on("connection", (ws) => {
-  console.log("Client connected");
+  ws.on("message", async (message) => {
+    const data = JSON.parse(message);
+    console.log("Received:", data);
 
-  ws.on("message", async (msg) => {
-    const data = JSON.parse(msg.toString());
+    // إعادة التوجيه إلى n8n webhook
+    const res = await fetch("https://marouass.app.n8n.cloud/webhook/19cfac5f-1486-49da-9073-fd2cfdbf4c23", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
 
-    ws.send(JSON.stringify({ type: "typing" }));
-
-    try {
-      const res = await fetch(
-        "https://marouass.app.n8n.cloud/webhook/ai-worker",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: data.message,
-            client_id: data.client_id,
-            language: data.language
-          })
-        }
-      );
-
-      const ai = await res.json();
-
-      ws.send(JSON.stringify({
-        type: "message",
-        text: ai.reply
-      }));
-
-    } catch (err) {
-      ws.send(JSON.stringify({
-        type: "error",
-        text: "خطأ في السيرفر"
-      }));
-    }
+    const reply = await res.json();
+    ws.send(JSON.stringify(reply));
   });
 });
 
-console.log("Gateway running on port", PORT);
+// Express HTTP endpoint
+app.post("/chat", async (req, res) => {
+  const response = await fetch("https://marouass.app.n8n.cloud/webhook/19cfac5f-1486-49da-9073-fd2cfdbf4c23", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req.body),
+  });
+
+  const data = await response.json();
+  res.json(data);
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
