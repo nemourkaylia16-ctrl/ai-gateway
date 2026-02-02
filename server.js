@@ -16,7 +16,7 @@ wss.on("connection", (ws) => {
     console.log("Received:", data);
 
     // إعادة التوجيه إلى n8n webhook
-    const res = await fetch("N8N_WEBHOOK_URL", {
+    const res = await fetch("https://marouass.app.n8n.cloud/webhook-test/19cfac5f-1486-49da-9073-fd2cfdbf4c23", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -29,7 +29,7 @@ wss.on("connection", (ws) => {
 
 // Express HTTP endpoint
 app.post("/chat", async (req, res) => {
-  const response = await fetch("N8N_WEBHOOK_URL", {
+  const response = await fetch("https://marouass.app.n8n.cloud/webhook-test/19cfac5f-1486-49da-9073-fd2cfdbf4c23", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(req.body),
