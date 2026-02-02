@@ -1,3 +1,20 @@
+// إنشاء اتصال WebSocket
+const socket = new WebSocket("wss://ai-gateway-2.onrender.com");
+
+// عند استقبال رسالة من السيرفر
+socket.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log("Bot reply:", data.reply); // عرض الرد في console
+  addMessage(data.reply, "bot");        // عرض الرد في واجهة البوت
+};
+
+// إرسال رسالة إلى السيرفر
+function sendMessage(message) {
+  socket.send(JSON.stringify({ message }));
+}
+
+// تجربة إرسال رسالة مباشرة
+sendMessage("مرحبا");
 (function () {
   /***********************
    * 1️⃣ قراءة الإعدادات
